@@ -1,4 +1,6 @@
-#
+# Spring フレームワークにおける認証などの実験
+
+- [変更内容](./CHANGELOG.md)
 
 ## ビルド と起動
 
@@ -53,4 +55,8 @@ server:
 
 1. サーバーを起動すれば `https://localhost:8443` でアクセスができる
     - ブラウザのアドレス欄から https であることが確認できる
+
+## CHANGELOG.md の更新
+
+- `git cliff > CHANGELOG.md`
 
