@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<!-- 初回プロンプト
+ #指示
+あなたはWebデザイナです。画面を作成してください。
+#目的
+- システムの仕組みなどを確認しやすい画面を構築する
+#条件
+- 画面を左右に分割する
+- 右側はAPIからのレスポンスなど、ログを表示するための読み取り専用のテキストエリア
+- 左側にはフォームを配置し、ID入力のインプットボックス、パスワード入力用のインプットボックス、
+  ログインボタン、ログアウトボタン、ステータス表示用のラベルがあります
+- Tailwind CSS を使用してください
+#データ
+- main.html
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!--RxJS-->
+    <script src="https://cdn.jsdelivr.net/npm/rxjs@7.8.2/dist/bundles/rxjs.umd.min.js"></script>
+</head>
+
+<body class="h-screen bg-gray-100">
+    <div class="flex h-full">
+        <!-- 左側：フォーム -->
+        <div class="w-1/2 flex items-center justify-center bg-white shadow-lg">
+            <div class="w-3/4 max-w-md space-y-6">
+                <h1 class="text-2xl font-bold text-gray-800 mb-4">システムログイン</h1>
+                <div class="space-y-4">
+                    <!-- ID入力 -->
+                    <div>
+                        <label for="userId" class="block text-sm font-medium text-gray-700">ユーザーID</label>
+                        <input id="userId" type="text"
+                            class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="ユーザーID">
+                    </div>
+                    <!-- パスワード入力 -->
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">パスワード</label>
+                        <input id="password" type="password"
+                            class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="パスワード">
+                    </div>
+                    <!-- ボタン -->
+                    <div class="flex space-x-4">
+                        <button id="btnLogin"
+                            class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">ログイン</button>
+                        <button id="btnLogout"
+                            class="flex-1 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">ログアウト</button>
+                    </div>
+                    <!-- ステータス表示 -->
+                    <div id="status" class="text-sm text-gray-600 mt-2">
+                        ステータス: 未ログイン
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側：ログエリア -->
+<!-- 2回目のプロンプト
+ログの種類によって色を変えることはできますか？
+できるのであれば
+- ユーザーの操作は暗い緑色
+- 正常なログは青色
+- 異常なログは赤色
+など変えたいです
+-->
+        <div class="w-1/2 bg-gray-900 text-green-400 p-4 overflow-y-auto">
+            <h2 class="text-lg font-semibold text-white mb-2">APIレスポンス / ログ</h2>
+            <div id="logArea" class="space-y-1 text-sm h-[90%] overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!--読み込み位置を変更-->
+    <script src="main.js"></script>
+</body>
+
+</html>
