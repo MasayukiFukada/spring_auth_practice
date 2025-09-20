@@ -76,6 +76,33 @@ function setStatus(text) {
     statusLabel.textContent = "ステータス: " + text;
 }
 
+<<<<<<< HEAD
+function appendLog(message, type) {
+    const now = new Date().toLocaleTimeString();
+    const logLine = document.createElement("div");
+
+    // メッセージタイプごとに色を切り替え
+    switch (type) {
+        case "user":
+            logLine.className = "text-green-300"; // 暗い緑
+            break;
+        case "info":
+            logLine.className = "text-blue-400"; // 正常ログ
+            break;
+        case "error":
+            logLine.className = "text-red-400"; // 異常ログ
+            break;
+    }
+
+    logLine.textContent = `[${now}] ${message}`;
+    logArea.appendChild(logLine);
+
+    // 自動スクロール
+    logArea.scrollTop = logArea.scrollHeight;
+}
+
+||||||| 721de5c
+=======
 const MAX_LOGS = 300; // 保持件数の上限
 
 function appendLog(message, type = "user") {
@@ -109,3 +136,4 @@ function appendLog(message, type = "user") {
         logArea.removeChild(logArea.lastChild);
     }
 }
+>>>>>>> feat/logHistoryUpsideDown
