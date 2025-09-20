@@ -1,8 +1,15 @@
 spring:
- security:
-   user:
-     name: testuser
-     password: pass001
+  datasource:
+    driver-class-name: org.sqlite.JDBC
+    url: jdbc:sqlite:kls_database.db
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+  security:
+    user:
+      name: testuser
+      password: pass001
 server:
   port: 8443
   ssl:
