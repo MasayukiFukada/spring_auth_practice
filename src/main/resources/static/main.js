@@ -48,11 +48,31 @@ app$.subscribe((event) => {
                 setStatus("ログイン中...");
                 appendLog(`ログイン試行: ${event.userId}`, "user");
 
-                // 疑似APIレスポンス
-                setTimeout(() => {
-                    setStatus("ログイン成功");
-                    appendLog("APIレスポンス: { status: 200, message: 'OK' }", "info");
-                }, 1000);
+                fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'username': event.userId,
+                        'password': event.password
+                    })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        setStatus("ログイン成功");
+                        appendLog("APIレスポンス: ログイン成功 (200 OK)", "info");
+                        // TODO: ログイン後の処理（例：ユーザー情報の表示など）
+                    } else {
+                        setStatus("ログイン失敗");
+                        appendLog(`APIレスポンス: ログイン失敗 (${response.status})`, "error");
+                    }
+                })
+                .catch(error => {
+                    setStatus("ログインエラー");
+                    appendLog(`ネットワークエラー: ${error}`, "error");
+                });
+
             } else {
                 setStatus("ログイン失敗: 入力不足");
                 appendLog("エラー: ユーザーIDまたはパスワードが未入力です", "error");
@@ -60,8 +80,27 @@ app$.subscribe((event) => {
             break;
 
         case "logout":
-            setStatus("ログアウトしました");
-            appendLog("ログアウト処理が実行されました", "user");
+            setStatus("ログアウト中...");
+            appendLog("ログアウト処理を実行します", "user");
+
+            fetch('/api/logout', {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.ok) {
+                    setStatus("ログアウト成功");
+                    appendLog("APIレスポンス: ログアウト成功 (200 OK)", "info");
+                    userIdInput.value = '';
+                    passwordInput.value = '';
+                } else {
+                    setStatus("ログアウト失敗");
+                    appendLog(`APIレスポンス: ログアウト失敗 (${response.status})`, "error");
+                }
+            })
+            .catch(error => {
+                setStatus("ログアウトエラー");
+                appendLog(`ネットワークエラー: ${error}`, "error");
+            });
             break;
 
         case "userIdChange":
