@@ -24,6 +24,8 @@ dependencies {
 	implementation("org.hibernate.orm:hibernate-community-dialects")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-web")
+	implementation("dev.samstevens.totp:totp-spring-boot-starter:1.7.1")
+	implementation("com.google.zxing:javase:3.5.3")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
