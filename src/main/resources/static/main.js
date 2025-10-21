@@ -15,7 +15,7 @@ const otpLoginForm = document.getElementById("otpLoginForm");
 const otpCodeInput = document.getElementById("otpCode");
 const btnOtpLogin = document.getElementById("btnOtpLogin");
 
-const otpSetupArea = document.getElementById("otpSetupArea");
+const mfaSetupArea = document.getElementById("mfaSetupArea");
 const btnEnableOtpSetup = document.getElementById("btnEnableOtpSetup");
 const otpQrCodeArea = document.getElementById("otpQrCodeArea");
 const otpQrCodeImage = document.getElementById("otpQrCodeImage");
@@ -23,6 +23,9 @@ const otpVerifyCodeInput = document.getElementById("otpVerifyCode");
 const btnVerifyOtp = document.getElementById("btnVerifyOtp");
 
 const btnRegister = document.getElementById("btnRegister");
+const btnPasskeyLogin = document.getElementById("btnPasskeyLogin");
+const btnRegisterPasskey = document.getElementById("btnRegisterPasskey");
+
 
 // --- 状態管理 ---
 const initialState = {
@@ -72,6 +75,13 @@ const verifyOtp$ = fromEvent(btnVerifyOtp, "click").pipe(
     map(() => ({ type: "VERIFY_OTP", payload: { code: otpVerifyCodeInput.value } }))
 );
 
+// パスキー登録開始イベント
+const registerPasskey$ = fromEvent(btnRegisterPasskey, "click").pipe(map(() => ({ type: "PASSKEY_REGISTER_START" })));
+
+// パスキーログイン開始イベント
+const loginPasskey$ = fromEvent(btnPasskeyLogin, "click").pipe(map(() => ({ type: "PASSKEY_LOGIN_START" })));
+
+
 // --- APIコール --- 
 
 const api = {
@@ -111,11 +121,36 @@ const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code })
         }).then(res => res.ok ? res.text() : Promise.reject(res)),
+
+    startPasskeyRegister: () => 
+        fetch('/passkey/register/start', { method: 'POST' })
+            .then(res => res.ok ? res.json() : Promise.reject(res)),
+
+    finishPasskeyRegister: (credential) =>
+        fetch('/passkey/register/finish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credential)
+        }).then(res => res.ok ? res.text() : Promise.reject(res)),
+
+    startPasskeyLogin: (username) =>
+        fetch('/passkey/login/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: username ? JSON.stringify({ username }) : ''
+        }).then(res => res.ok ? res.json() : Promise.reject(res)),
+
+    finishPasskeyLogin: (credential) =>
+        fetch('/passkey/login/finish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credential)
+        }).then(res => res.ok ? res.text() : Promise.reject(res)),
 };
 
 // --- イベント処理 ---
 
-const app$ = merge(login$, register$, logout$, otpLogin$, setupOtp$, verifyOtp$).pipe(
+const app$ = merge(login$, register$, logout$, otpLogin$, setupOtp$, verifyOtp$, registerPasskey$, loginPasskey$).pipe(
     switchMap(event => {
         setStatus("処理中...");
         appendLog(`イベント: ${event.type}`, "user");
@@ -157,6 +192,12 @@ const app$ = merge(login$, register$, logout$, otpLogin$, setupOtp$, verifyOtp$)
                     catchError(err => of({ type: "API_ERROR", payload: `OTP検証失敗: ${err.status}` }))
                 );
 
+            case "PASSKEY_REGISTER_START":
+                return from(handlePasskeyRegisterStart());
+
+            case "PASSKEY_LOGIN_START":
+                return from(handlePasskeyLoginStart());
+
             default:
                 return of({ type: "NO_OP" });
         }
@@ -177,7 +218,7 @@ app$.subscribe(action => {
             } else {
                 state = { ...state, loggedIn: true, otpPending: false, user: action.user };
                 setStatus(`ようこそ ${state.user} さん`);
-                showOtpSetup();
+                showMfaSetup();
                 logoutBtn.classList.remove("hidden");
             }
             break;
@@ -200,7 +241,7 @@ app$.subscribe(action => {
         case "OTP_LOGIN_SUCCESS":
             state = { ...state, loggedIn: true, otpPending: false };
             setStatus(`ようこそ ${state.user} さん`);
-            showOtpSetup();
+            showMfaSetup();
             logoutBtn.classList.remove("hidden");
             break;
 
@@ -218,6 +259,18 @@ app$.subscribe(action => {
             alert("OTPが有効になりました！");
             break;
 
+        case "PASSKEY_REGISTER_SUCCESS":
+            setStatus("パスキー登録成功");
+            alert("新しいパスキーを登録しました。");
+            break;
+
+        case "PASSKEY_LOGIN_SUCCESS":
+            state = { ...state, loggedIn: true, otpPending: false, user: "Passkey User" }; // TODO: Get actual username
+            setStatus(`ようこそ ${state.user} さん`);
+            showMfaSetup();
+            logoutBtn.classList.remove("hidden");
+            break;
+
         case "API_ERROR":
             setStatus("エラー");
             appendLog(action.payload, "error");
@@ -230,7 +283,7 @@ app$.subscribe(action => {
 function showLoginForm() {
     loginForm.classList.remove("hidden");
     otpLoginForm.classList.add("hidden");
-    otpSetupArea.classList.add("hidden");
+    mfaSetupArea.classList.add("hidden");
     otpQrCodeArea.classList.add("hidden");
     btnEnableOtpSetup.classList.remove("hidden");
     userIdInput.value = '';
@@ -242,14 +295,49 @@ function showLoginForm() {
 function showOtpForm() {
     loginForm.classList.add("hidden");
     otpLoginForm.classList.remove("hidden");
-    otpSetupArea.classList.add("hidden");
+    mfaSetupArea.classList.add("hidden");
 }
 
-function showOtpSetup() {
+function showMfaSetup() {
     loginForm.classList.add("hidden");
     otpLoginForm.classList.add("hidden");
-    otpSetupArea.classList.remove("hidden");
+    mfaSetupArea.classList.remove("hidden");
 }
+
+// --- WebAuthn ハンドラ ---
+
+async function handlePasskeyRegisterStart() {
+    try {
+        const creationOptions = await api.startPasskeyRegister();
+        appendLog("登録オプション受信", "info");
+        const credential = await navigator.credentials.create({
+            publicKey: decodeRegistrationOptions(creationOptions)
+        });
+        appendLog("クレデンシャル作成成功", "info");
+        const credentialJson = { credential: encodeRegistrationCredential(credential) };
+        const response = await api.finishPasskeyRegister(credentialJson);
+        return { type: "PASSKEY_REGISTER_SUCCESS", payload: response };
+    } catch (err) {
+        return { type: "API_ERROR", payload: `パスキー登録失敗: ${err}` };
+    }
+}
+
+async function handlePasskeyLoginStart() {
+    try {
+        const requestOptions = await api.startPasskeyLogin(userIdInput.value || null);
+        appendLog("認証オプション受信", "info");
+        const credential = await navigator.credentials.get({
+            publicKey: decodeLoginOptions(requestOptions)
+        });
+        appendLog("認証成功", "info");
+        const credentialJson = { credential: encodeLoginCredential(credential) };
+        const response = await api.finishPasskeyLogin(credentialJson);
+        return { type: "PASSKEY_LOGIN_SUCCESS", payload: response };
+    } catch (err) {
+        return { type: "API_ERROR", payload: `パスキーログイン失敗: ${err}` };
+    }
+}
+
 
 // --- ユーティリティ関数 ---
 
@@ -281,6 +369,75 @@ function appendLog(message, type = "user") {
         logArea.removeChild(logArea.lastChild);
     }
 }
+
+// --- WebAuthn ヘルパー ---
+
+function bufferToBase64url(buffer) {
+    return btoa(String.fromCharCode.apply(null, new Uint8Array(buffer)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function base64urlToBuffer(base64url) {
+    const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    const binStr = atob(base64);
+    const bin = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) {
+        bin[i] = binStr.charCodeAt(i);
+    }
+    return bin.buffer;
+}
+
+const decodeRegistrationOptions = (options) => {
+    const decoded = { ...options };
+    decoded.challenge = base64urlToBuffer(decoded.challenge);
+    decoded.user.id = base64urlToBuffer(decoded.user.id);
+    if (decoded.excludeCredentials) {
+        decoded.excludeCredentials = decoded.excludeCredentials.map(cred => ({
+            ...cred,
+            id: base64urlToBuffer(cred.id)
+        }));
+    }
+    return decoded;
+};
+
+const decodeLoginOptions = (options) => {
+    const decoded = { ...options };
+    decoded.challenge = base64urlToBuffer(decoded.challenge);
+    if (decoded.allowCredentials) {
+        decoded.allowCredentials = decoded.allowCredentials.map(cred => ({
+            ...cred,
+            id: base64urlToBuffer(cred.id)
+        }));
+    }
+    return decoded;
+};
+
+function encodeRegistrationCredential(credential) {
+    return {
+        id: credential.id,
+        rawId: bufferToBase64url(credential.rawId),
+        type: credential.type,
+        response: {
+            clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+            attestationObject: bufferToBase64url(credential.response.attestationObject),
+        },
+    };
+}
+
+function encodeLoginCredential(credential) {
+    return {
+        id: credential.id,
+        rawId: bufferToBase64url(credential.rawId),
+        type: credential.type,
+        response: {
+            clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+            authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+            signature: bufferToBase64url(credential.response.signature),
+            userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : null,
+        },
+    };
+}
+
 
 // 初期化
 showLoginForm();

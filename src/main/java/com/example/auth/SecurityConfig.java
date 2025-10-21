@@ -41,7 +41,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) // APIベースなのでCSRFは一旦無効に
             .addFilterAfter(otpAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // Add our custom filter
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/", "/main.html", "/css/**", "/main.js", "/main.js.orig", "/api/register", "/error").permitAll()
+                .requestMatchers("/", "/main.html", "/css/**", "/main.js", "/main.js.orig", "/api/register", "/error", "/passkey/**").permitAll() // Add /passkey/**
                 .requestMatchers("/api/otp/login").hasAuthority("ROLE_OTP_PENDING") // Only allow access if OTP is pending
                 .anyRequest().authenticated()
             )

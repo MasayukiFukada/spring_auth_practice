@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
+import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -50,6 +51,11 @@ public class UserController {
         User newUser = new User();
         newUser.setName(registerRequest.getName());
         newUser.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+
+        // Generate and set passkeyId (user handle)
+        byte[] passkeyId = new byte[64];
+        new SecureRandom().nextBytes(passkeyId);
+        newUser.setPasskeyId(passkeyId);
 
         userRepository.save(newUser);
 

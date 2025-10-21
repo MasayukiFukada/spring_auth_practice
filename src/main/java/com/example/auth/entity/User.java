@@ -1,11 +1,16 @@
 package com.example.auth.entity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -25,6 +30,12 @@ public class User {
     private boolean otpEnabled = false;
 
     private String secret;
+
+    @Column(nullable = false, unique = true)
+    private byte[] passkeyId;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private Set<WebAuthnCredential> credentials;
 
     public Long getId() {
         return id;
@@ -64,5 +75,21 @@ public class User {
 
     public void setSecret(String secret) {
         this.secret = secret;
+    }
+
+    public byte[] getPasskeyId() {
+        return passkeyId;
+    }
+
+    public void setPasskeyId(byte[] passkeyId) {
+        this.passkeyId = passkeyId;
+    }
+
+    public Set<WebAuthnCredential> getCredentials() {
+        return credentials;
+    }
+
+    public void setCredentials(Set<WebAuthnCredential> credentials) {
+        this.credentials = credentials;
     }
 }
