@@ -1,0 +1,34 @@
+@startuml
+title 通常のログイン (TOTPなし)
+
+actor アクター
+participant ブラウザ
+participant サーバー
+database DB
+
+アクター -> ブラウザ: ログインページにアクセス
+ブラウザ -> サーバー: GET /login
+activate サーバー
+サーバー --> ブラウザ: ログインフォームを返す
+deactivate サーバー
+
+アクター -> ブラウザ: ユーザー名とパスワードを入力し、ログインボタンをクリック
+ブラウザ -> サーバー: POST /login (ユーザー名, パスワード)
+activate サーバー
+サーバー -> DB: ユーザー情報を検索 (findByUsername)
+activate DB
+DB --> サーバー: ユーザー情報 (ハッシュ化されたパスワード)
+deactivate DB
+
+サーバー -> サーバー: パスワードの検証 (BCrypt.checkpw)
+alt 認証成功
+    サーバー -> ブラウザ: 認証成功レスポンス (セッションID/JWT)
+    deactivate サーバー
+    ブラウザ -> アクター: ログイン成功、ダッシュボード表示
+else 認証失敗
+    サーバー -> ブラウザ: 認証失敗レスポンス
+    deactivate サーバー
+    ブラウザ -> アクター: エラーメッセージ表示
+end
+
+@enduml

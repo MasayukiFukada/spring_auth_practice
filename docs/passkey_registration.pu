@@ -1,0 +1,31 @@
+@startuml
+title パスキーの登録
+
+actor アクター
+participant ブラウザ
+participant サーバー
+database DB
+
+アクター -> ブラウザ: パスキー設定ページにアクセス
+ブラウザ -> サーバー: GET /webauthn/registration/start (ユーザーID)
+activate サーバー
+サーバー -> サーバー: WebAuthn登録開始オプションを生成 (RP ID, チャレンジ)
+サーバー --> ブラウザ: 登録開始オプション (JSON)
+deactivate サーバー
+
+ブラウザ -> ブラウザ: WebAuthn APIを呼び出し、登録オプションを渡す (navigator.credentials.create)
+ブラウザ -> アクター: パスキーデバイスの認証を要求
+アクター -> ブラウザ: パスキーデバイスで認証 (指紋、顔認証など)
+ブラウザ -> ブラウザ: 認証器からの公開鍵クレデンシャルを取得
+ブラウザ -> サーバー: POST /webauthn/registration/finish (公開鍵クレデンシャル)
+activate サーバー
+サーバー -> サーバー: 公開鍵クレデンシャルを検証
+サーバー -> DB: 公開鍵クレデンシャル情報を保存 (saveWebAuthnCredential)
+activate DB
+DB --> サーバー: 保存完了
+deactivate DB
+サーバー --> ブラウザ: 登録成功レスポンス
+deactivate サーバー
+ブラウザ -> アクター: パスキー登録完了メッセージ表示
+
+@enduml

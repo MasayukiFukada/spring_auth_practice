@@ -1,0 +1,51 @@
+@startuml
+title TOTPを使用したログイン
+
+actor アクター
+participant ブラウザ
+participant サーバー
+database DB
+
+アクター -> ブラウザ: ログインページにアクセス
+ブラウザ -> サーバー: GET /login
+activate サーバー
+サーバー --> ブラウザ: ログインフォームを返す
+deactivate サーバー
+
+アクター -> ブラウザ: ユーザー名とパスワードを入力し、ログインボタンをクリック
+ブラウザ -> サーバー: POST /login (ユーザー名, パスワード)
+activate サーバー
+サーバー -> DB: ユーザー情報を検索 (findByUsername)
+activate DB
+DB --> サーバー: ユーザー情報 (ハッシュ化されたパスワード, TOTP有効フラグ)
+deactivate DB
+
+サーバー -> サーバー: パスワードの検証 (BCrypt.checkpw)
+alt パスワード認証成功 かつ TOTP有効
+    サーバー --> ブラウザ: TOTP入力フォームを返す (セッションID)
+    deactivate サーバー
+    アクター -> ブラウザ: TOTPアプリから生成されたコードを入力し、送信ボタンをクリック
+    ブラウザ -> サーバー: POST /login/totp (セッションID, TOTPコード)
+    activate サーバー
+    サーバー -> DB: ユーザーのTOTPシークレットを取得 (findTotpSecretByUserId)
+    activate DB
+    DB --> サーバー: TOTPシークレット
+    deactivate DB
+    サーバー -> サーバー: TOTPコードを検証 (TOTPVerifier.verify)
+    note right: 時間ベースのシークレットと現在の時刻でコードを検証
+    alt TOTP検証成功
+        サーバー -> ブラウザ: 認証成功レスポンス (セッションID/JWT)
+        deactivate サーバー
+        ブラウザ -> アクター: ログイン成功、ダッシュボード表示
+    else TOTP検証失敗
+        サーバー -> ブラウザ: エラーレスポンス
+        deactivate サーバー
+        ブラウザ -> アクター: エラーメッセージ表示
+    end
+else パスワード認証失敗 または TOTP無効
+    サーバー -> ブラウザ: 認証失敗レスポンス
+    deactivate サーバー
+    ブラウザ -> アクター: エラーメッセージ表示
+end
+
+@enduml

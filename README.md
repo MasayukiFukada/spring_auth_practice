@@ -4,7 +4,8 @@
 - [HTTPS対応](./docs/mkcert.md)
     - ローカル環境でも HTTPS に対応させる方法
     - ※ Spring の場合
-- [API仕様と次のステップ](./docs/api_usage.md)
+- [API仕様](./docs/api_usage.md)
+- [シーケンス図](./docs/sequence.md)
 - [生成AIによる開発](./docs/ai.md)
 
 ## 機能
@@ -25,9 +26,12 @@
 
 ## 環境
 
-- Java
-- Spring
-- DB: SQLite
+- フロントエンド
+    - Javascript
+- バックエンド
+    - Java
+    - Spring
+    - DB: SQLite
 
 ## ビルド と起動
 
@@ -35,7 +39,9 @@
 
 - `./gradlew bootrun` で起動
 
+- `mise i` で言語バージョンなどを合わせる
+    - <前提> mise がインストールされていること
+
 ## CHANGELOG.md の更新
 
 - `git cliff > CHANGELOG.md`
-

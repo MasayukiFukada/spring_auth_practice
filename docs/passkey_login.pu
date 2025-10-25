@@ -1,0 +1,43 @@
+@startuml
+title パスキーを使用したログイン
+
+actor アクター
+participant ブラウザ
+participant サーバー
+database DB
+
+アクター -> ブラウザ: ログインページにアクセス
+ブラウザ -> サーバー: GET /login
+activate サーバー
+サーバー --> ブラウザ: ログインフォームを返す
+deactivate サーバー
+
+アクター -> ブラウザ: ユーザー名を入力し、パスキーログインボタンをクリック
+ブラウザ -> サーバー: POST /webauthn/authentication/start (ユーザー名)
+activate サーバー
+サーバー -> DB: ユーザーのWebAuthnクレデンシャル情報を取得 (findWebAuthnCredentialsByUserId)
+activate DB
+DB --> サーバー: クレデンシャル情報
+deactivate DB
+サーバー -> サーバー: WebAuthn認証開始オプションを生成 (RP ID, チャレンジ, 許可されたクレデンシャル)
+サーバー --> ブラウザ: 認証開始オプション (JSON)
+deactivate サーバー
+
+ブラウザ -> ブラウザ: WebAuthn APIを呼び出し、認証オプションを渡す (navigator.credentials.get)
+ブラウザ -> アクター: パスキーデバイスの認証を要求
+アクター -> ブラウザ: パスキーデバイスで認証 (指紋、顔認証など)
+ブラウザ -> ブラウザ: 認証器からのアサーションを取得
+ブラウザ -> サーバー: POST /webauthn/authentication/finish (アサーション)
+activate サーバー
+サーバー -> サーバー: アサーションを検証
+alt 検証成功
+    サーバー -> ブラウザ: 認証成功レスポンス (セッションID/JWT)
+    deactivate サーバー
+    ブラウザ -> アクター: ログイン成功、ダッシュボード表示
+else 検証失敗
+    サーバー -> ブラウザ: 認証失敗レスポンス
+    deactivate サーバー
+    ブラウザ -> アクター: エラーメッセージ表示
+end
+
+@enduml
