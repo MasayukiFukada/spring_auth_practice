@@ -310,14 +310,17 @@ async function handlePasskeyRegisterStart() {
     try {
         const creationOptions = await api.startPasskeyRegister();
         appendLog("登録オプション受信", "info");
+        console.log("サーバーから受信した登録オプション:", JSON.stringify(creationOptions, null, 2));
         const credential = await navigator.credentials.create({
             publicKey: decodeRegistrationOptions(creationOptions)
         });
         appendLog("クレデンシャル作成成功", "info");
-        const credentialJson = { credential: encodeRegistrationCredential(credential) };
-        const response = await api.finishPasskeyRegister(credentialJson);
+        const credentialForServer = encodeRegistrationCredential(credential);
+        console.log("サーバーへ送信するクレデンシャル:", JSON.stringify(credentialForServer, null, 2));
+        const response = await api.finishPasskeyRegister(credentialForServer);
         return { type: "PASSKEY_REGISTER_SUCCESS", payload: response };
     } catch (err) {
+        console.error("パスキー登録中にエラーが発生しました:", err);
         return { type: "API_ERROR", payload: `パスキー登録失敗: ${err}` };
     }
 }
@@ -330,8 +333,8 @@ async function handlePasskeyLoginStart() {
             publicKey: decodeLoginOptions(requestOptions)
         });
         appendLog("認証成功", "info");
-        const credentialJson = { credential: encodeLoginCredential(credential) };
-        const response = await api.finishPasskeyLogin(credentialJson);
+        const credentialForServer = encodeLoginCredential(credential);
+        const response = await api.finishPasskeyLogin(credentialForServer);
         return { type: "PASSKEY_LOGIN_SUCCESS", payload: response };
     } catch (err) {
         return { type: "API_ERROR", payload: `パスキーログイン失敗: ${err}` };
@@ -392,10 +395,25 @@ const decodeRegistrationOptions = (options) => {
     decoded.challenge = base64urlToBuffer(decoded.challenge);
     decoded.user.id = base64urlToBuffer(decoded.user.id);
     if (decoded.excludeCredentials) {
-        decoded.excludeCredentials = decoded.excludeCredentials.map(cred => ({
-            ...cred,
-            id: base64urlToBuffer(cred.id)
-        }));
+        decoded.excludeCredentials = decoded.excludeCredentials.map(cred => {
+            const newCred = {
+                ...cred,
+                id: base64urlToBuffer(cred.id)
+            };
+            if (newCred.transports === null || newCred.transports === undefined) {
+                // transports が null または undefined の場合はプロパティ自体を削除
+                delete newCred.transports;
+            } else if (!Array.isArray(newCred.transports)) {
+                // transports が配列でない場合に、単一の文字列であれば配列に変換する
+                console.warn("WebAuthn: excludeCredentials.transports is not an array. Attempting to convert to array.", newCred.transports);
+                newCred.transports = [newCred.transports];
+            }
+            return newCred;
+        });
+    }
+    // appidExclude 拡張が null の場合にエラーとなるブラウザがあるため、プロパティごと削除する
+    if (decoded.extensions && decoded.extensions.appidExclude === null) {
+        delete decoded.extensions.appidExclude;
     }
     return decoded;
 };
@@ -403,11 +421,22 @@ const decodeRegistrationOptions = (options) => {
 const decodeLoginOptions = (options) => {
     const decoded = { ...options };
     decoded.challenge = base64urlToBuffer(decoded.challenge);
-    if (decoded.allowCredentials) {
+    if (decoded.allowCredentials === null || decoded.allowCredentials === undefined) {
+        // allowCredentials が null または undefined の場合はプロパティ自体を削除
+        delete decoded.allowCredentials;
+    } else if (!Array.isArray(decoded.allowCredentials)) {
+        // allowCredentials が配列でない場合に、単一の文字列であれば配列に変換する
+        console.warn("WebAuthn: allowCredentials is not an array. Attempting to convert to array.", decoded.allowCredentials);
+        decoded.allowCredentials = [decoded.allowCredentials];
+    } else {
         decoded.allowCredentials = decoded.allowCredentials.map(cred => ({
             ...cred,
             id: base64urlToBuffer(cred.id)
         }));
+    }
+    // appid 拡張が null の場合にエラーとなるブラウザがあるため、プロパティごと削除する
+    if (decoded.extensions && decoded.extensions.appid === null) {
+        delete decoded.extensions.appid;
     }
     return decoded;
 };
@@ -421,6 +450,7 @@ function encodeRegistrationCredential(credential) {
             clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
             attestationObject: bufferToBase64url(credential.response.attestationObject),
         },
+        clientExtensionResults: {}
     };
 }
 
@@ -435,6 +465,7 @@ function encodeLoginCredential(credential) {
             signature: bufferToBase64url(credential.response.signature),
             userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : null,
         },
+        clientExtensionResults: {}
     };
 }
 

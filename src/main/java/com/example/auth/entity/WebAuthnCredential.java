@@ -17,9 +17,8 @@ public class WebAuthnCredential {
     @Column(nullable = false, unique = true)
     private byte[] credentialId;
 
-    @Lob
     @Column(nullable = false)
-    private byte[] publicKeyCose;
+    private String publicKeyCose;
 
     @Column(nullable = false)
     private long signatureCount;
@@ -53,11 +52,11 @@ public class WebAuthnCredential {
         this.credentialId = credentialId;
     }
 
-    public byte[] getPublicKeyCose() {
+    public String getPublicKeyCose() {
         return publicKeyCose;
     }
 
-    public void setPublicKeyCose(byte[] publicKeyCose) {
+    public void setPublicKeyCose(String publicKeyCose) {
         this.publicKeyCose = publicKeyCose;
     }
 
