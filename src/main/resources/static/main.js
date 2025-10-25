@@ -28,12 +28,17 @@ const btnRegisterPasskey = document.getElementById("btnRegisterPasskey");
 
 
 // --- 状態管理 ---
+const { BehaviorSubject } = rxjs;
+
 const initialState = {
     loggedIn: false,
     otpPending: false,
     user: null,
+    otpSetupPending: false,
+    qrCodeUrl: null,
+    lastActionType: null,
 };
-let state = { ...initialState };
+const state$ = new BehaviorSubject(initialState);
 
 // --- ストリーム定義 ---
 
@@ -207,138 +212,140 @@ const app$ = merge(login$, register$, logout$, otpLogin$, setupOtp$, verifyOtp$,
 // --- 状態更新とUI描画 ---
 
 app$.subscribe(action => {
-    appendLog(`アクション: ${action.type}`, "info");
+    appendLog(`イベント: ${action.type}`, "user"); // Keep logging user events
+
+    const currentState = state$.value;
+    let newState = { ...currentState, lastActionType: action.type };
 
     switch (action.type) {
         case "LOGIN_SUCCESS":
             if (action.payload.otpRequired) {
-                state = { ...state, otpPending: true, user: action.user };
-                setStatus(`ようこそ ${state.user} さん、OTPコードを入力してください`);
-                showOtpForm();
+                newState = { ...newState, otpPending: true, user: action.user };
             } else {
-                state = { ...state, loggedIn: true, otpPending: false, user: action.user };
-                setStatus(`ようこそ ${state.user} さん`);
-                showMfaSetup();
-                logoutBtn.classList.remove("hidden");
+                newState = { ...newState, loggedIn: true, otpPending: false, user: action.user };
             }
             break;
 
         case "REGISTER_SUCCESS":
-            setStatus("ユーザー登録成功");
-            appendLog(`サーバーメッセージ: ${action.payload}`, "info");
+            // UI updates moved to state$.subscribe
+            break;
+
+        case "LOGOUT_SUCCESS":
+            newState = { ...initialState, lastActionType: action.type }; // Reset to initial state on logout
+            break;
+
+        case "OTP_LOGIN_SUCCESS":
+            newState = { ...newState, loggedIn: true, otpPending: false };
+            break;
+
+        case "SETUP_OTP_SUCCESS":
+            newState = { ...newState, otpSetupPending: true, qrCodeUrl: action.payload.qrUrl };
+            break;
+
+        case "VERIFY_OTP_SUCCESS":
+            newState = { ...newState, otpSetupPending: false, qrCodeUrl: null };
+            break;
+
+        case "PASSKEY_REGISTER_SUCCESS":
+            // UI updates moved to state$.subscribe
+            break;
+
+        case "PASSKEY_LOGIN_SUCCESS":
+            newState = { ...newState, loggedIn: true, otpPending: false, user: "Passkey User" }; // TODO: Get actual username
+            break;
+
+        case "API_ERROR":
+            // Error message can be stored in state if needed for display
+            // For now, appendLog is sufficient and kept in app$ for immediate feedback
+            appendLog(action.payload, "error");
+            break;
+    }
+    state$.next(newState);
+});
+
+// --- 状態更新とUI描画 ---
+
+state$.subscribe(state => {
+    appendLog(`状態更新: ${JSON.stringify(state)}`, "info");
+
+    // すべてのフォームを一旦非表示にする
+    loginForm.classList.add("hidden");
+    otpLoginForm.classList.add("hidden");
+    mfaSetupArea.classList.add("hidden");
+    otpQrCodeArea.classList.add("hidden"); // QRコード表示エリアも一旦非表示に
+
+    // ログイン状態に基づくUI表示
+    if (state.loggedIn) {
+        setStatus(`ようこそ ${state.user} さん`);
+        mfaSetupArea.classList.remove("hidden"); // MFAセットアップエリアを表示
+        logoutBtn.classList.remove("hidden");
+    } else if (state.otpPending) {
+        setStatus(`ようこそ ${state.user} さん、OTPコードを入力してください`);
+        otpLoginForm.classList.remove("hidden"); // OTPログインフォームを表示
+    } else {
+        setStatus("未ログイン");
+        loginForm.classList.remove("hidden"); // ログインフォームを表示
+        logoutBtn.classList.add("hidden");
+        userIdInput.value = ''; // ログインフォーム表示時にクリア
+        passwordInput.value = ''; // ログインフォーム表示時にクリア
+        otpCodeInput.value = ''; // OTPコードもクリア
+        otpVerifyCodeInput.value = ''; // OTP検証コードもクリア
+    }
+
+    // OTPセットアップUI表示
+    if (state.otpSetupPending && state.qrCodeUrl) {
+        otpQrCodeImage.src = state.qrCodeUrl;
+        otpQrCodeArea.classList.remove("hidden");
+        btnEnableOtpSetup.classList.add("hidden");
+        setStatus("QRコードをスキャンして確認コードを入力してください");
+    } else {
+        // OTPセットアップ中でない場合、関連要素を非表示に
+        otpQrCodeArea.classList.add("hidden");
+        btnEnableOtpSetup.classList.remove("hidden");
+    }
+
+    // 特定のアクションタイプに応じた副作用（アラート、入力クリアなど）
+    switch (state.lastActionType) {
+        case "REGISTER_SUCCESS":
             alert("ユーザー登録に成功しました。ログインしてください。");
             userIdInput.value = "";
             passwordInput.value = "";
             break;
-
-        case "LOGOUT_SUCCESS":
-            state = { ...initialState };
-            setStatus("未ログイン");
-            showLoginForm();
-            logoutBtn.classList.add("hidden");
-            break;
-
-        case "OTP_LOGIN_SUCCESS":
-            state = { ...state, loggedIn: true, otpPending: false };
-            setStatus(`ようこそ ${state.user} さん`);
-            showMfaSetup();
-            logoutBtn.classList.remove("hidden");
-            break;
-
-        case "SETUP_OTP_SUCCESS":
-            otpQrCodeImage.src = action.payload.qrUrl; // Directly use the Data URI
-            otpQrCodeArea.classList.remove("hidden");
-            btnEnableOtpSetup.classList.add("hidden");
-            setStatus("QRコードをスキャンして確認コードを入力してください");
-            break;
-
-        case "VERIFY_OTP_SUCCESS":
-            otpQrCodeArea.classList.add("hidden");
-            btnEnableOtpSetup.classList.remove("hidden");
-            setStatus("OTPが正常に有効化されました");
-            alert("OTPが有効になりました！");
-            break;
-
         case "PASSKEY_REGISTER_SUCCESS":
-            setStatus("パスキー登録成功");
             alert("新しいパスキーを登録しました。");
             break;
-
-        case "PASSKEY_LOGIN_SUCCESS":
-            state = { ...state, loggedIn: true, otpPending: false, user: "Passkey User" }; // TODO: Get actual username
-            setStatus(`ようこそ ${state.user} さん`);
-            showMfaSetup();
-            logoutBtn.classList.remove("hidden");
-            break;
-
-        case "API_ERROR":
-            setStatus("エラー");
-            appendLog(action.payload, "error");
+        case "VERIFY_OTP_SUCCESS":
+            alert("OTPが有効になりました！");
             break;
     }
 });
 
-// --- UI制御関数 ---
-
-function showLoginForm() {
-    loginForm.classList.remove("hidden");
-    otpLoginForm.classList.add("hidden");
-    mfaSetupArea.classList.add("hidden");
-    otpQrCodeArea.classList.add("hidden");
-    btnEnableOtpSetup.classList.remove("hidden");
-    userIdInput.value = '';
-    passwordInput.value = '';
-    otpCodeInput.value = '';
-    otpVerifyCodeInput.value = '';
-}
-
-function showOtpForm() {
-    loginForm.classList.add("hidden");
-    otpLoginForm.classList.remove("hidden");
-    mfaSetupArea.classList.add("hidden");
-}
-
-function showMfaSetup() {
-    loginForm.classList.add("hidden");
-    otpLoginForm.classList.add("hidden");
-    mfaSetupArea.classList.remove("hidden");
-}
-
 // --- WebAuthn ハンドラ ---
 
 async function handlePasskeyRegisterStart() {
-    try {
-        const creationOptions = await api.startPasskeyRegister();
-        appendLog("登録オプション受信", "info");
-        console.log("サーバーから受信した登録オプション:", JSON.stringify(creationOptions, null, 2));
-        const credential = await navigator.credentials.create({
-            publicKey: decodeRegistrationOptions(creationOptions)
-        });
-        appendLog("クレデンシャル作成成功", "info");
-        const credentialForServer = encodeRegistrationCredential(credential);
-        console.log("サーバーへ送信するクレデンシャル:", JSON.stringify(credentialForServer, null, 2));
-        const response = await api.finishPasskeyRegister(credentialForServer);
-        return { type: "PASSKEY_REGISTER_SUCCESS", payload: response };
-    } catch (err) {
-        console.error("パスキー登録中にエラーが発生しました:", err);
-        return { type: "API_ERROR", payload: `パスキー登録失敗: ${err}` };
-    }
+    const creationOptions = await api.startPasskeyRegister();
+    appendLog("登録オプション受信", "info");
+    console.log("サーバーから受信した登録オプション:", JSON.stringify(creationOptions, null, 2));
+    const credential = await navigator.credentials.create({
+        publicKey: decodeRegistrationOptions(creationOptions)
+    });
+    appendLog("クレデンシャル作成成功", "info");
+    const credentialForServer = encodeRegistrationCredential(credential);
+    console.log("サーバーへ送信するクレデンシャル:", JSON.stringify(credentialForServer, null, 2));
+    const response = await api.finishPasskeyRegister(credentialForServer);
+    return { type: "PASSKEY_REGISTER_SUCCESS", payload: response };
 }
 
 async function handlePasskeyLoginStart() {
-    try {
-        const requestOptions = await api.startPasskeyLogin(userIdInput.value || null);
-        appendLog("認証オプション受信", "info");
-        const credential = await navigator.credentials.get({
-            publicKey: decodeLoginOptions(requestOptions)
-        });
-        appendLog("認証成功", "info");
-        const credentialForServer = encodeLoginCredential(credential);
-        const response = await api.finishPasskeyLogin(credentialForServer);
-        return { type: "PASSKEY_LOGIN_SUCCESS", payload: response };
-    } catch (err) {
-        return { type: "API_ERROR", payload: `パスキーログイン失敗: ${err}` };
-    }
+    const requestOptions = await api.startPasskeyLogin(userIdInput.value || null);
+    appendLog("認証オプション受信", "info");
+    const credential = await navigator.credentials.get({
+        publicKey: decodeLoginOptions(requestOptions)
+    });
+    appendLog("認証成功", "info");
+    const credentialForServer = encodeLoginCredential(credential);
+    const response = await api.finishPasskeyLogin(credentialForServer);
+    return { type: "PASSKEY_LOGIN_SUCCESS", payload: response };
 }
 
 
@@ -470,6 +477,4 @@ function encodeLoginCredential(credential) {
 }
 
 
-// 初期化
-showLoginForm();
-setStatus("未ログイン");
+// 初期化はstate$の初期値によって自動的に行われるため、不要
