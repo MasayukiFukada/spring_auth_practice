@@ -1,12 +1,19 @@
 spring:
- security:
-   user:
-     name: testuser
-     password: pass001
+  datasource:
+    driver-class-name: org.sqlite.JDBC
+    url: jdbc:sqlite:kls_database.db
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+  security:
+    user:
+      name: testuser
+      password: pass001
 server:
   port: 8443
   ssl:
-    key-store: classpath:localhost+2.p12  # 証明書ファイル
+    key-store: classpath:localhost+4.p12  # 証明書ファイル
     key-store-type: PKCS12                # 証明書作成時のキーストアタイプ
     key-password: changeit                # mkcertデフォルト
     key-store-password: changeit          # mkcertデフォルト
