@@ -13,7 +13,7 @@ spring:
 server:
   port: 8443
   ssl:
-    key-store: classpath:localhost+2.p12  # 証明書ファイル
+    key-store: classpath:localhost+4.p12  # 証明書ファイル
     key-store-type: PKCS12                # 証明書作成時のキーストアタイプ
     key-password: changeit                # mkcertデフォルト
     key-store-password: changeit          # mkcertデフォルト

@@ -5,6 +5,7 @@
     - ローカル環境でも HTTPS に対応させる方法
     - ※ Spring の場合
 - [API仕様と次のステップ](./docs/api_usage.md)
+- [生成AIによる開発](./docs/ai.md)
 
 ## ビルド と起動
 
