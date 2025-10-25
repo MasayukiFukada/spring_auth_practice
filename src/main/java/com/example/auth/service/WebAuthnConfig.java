@@ -15,14 +15,14 @@ public class WebAuthnConfig {
     @Bean
     public RelyingParty relyingParty(WebAuthnCredentialRepository credentialRepo, UserRepository userRepo) {
         RelyingPartyIdentity rpIdentity = RelyingPartyIdentity.builder()
-                .id("arch-portable.local") // RP ID (ドメイン)
+                .id("localhost") // RP ID (ドメイン)
                 .name("Spring Auth Practice")
                 .build();
 
         return RelyingParty.builder()
                 .identity(rpIdentity)
                 .credentialRepository(new JpaCredentialRepository(credentialRepo, userRepo))
-                .origins(Set.of("https://arch-portable.local:8443")) // 許可するオリジン
+                .origins(Set.of("https://localhost:8443")) // 許可するオリジン
                 .build();
     }
 }

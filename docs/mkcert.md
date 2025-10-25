@@ -1,8 +1,9 @@
 ## mkcert によるローカル証明書
 
-今回行なった手順
+- 今回行なった手順
+    - 検証端末( arch-portable.local @ 192.168.11.39 )
 
-1. ホームディレクトリに移動
+1. 検証端末のホームディレクトリに移動
 
 1. ローカル証明局の作成
     - `mkcert -install` でルート証明書が作成できる
@@ -21,18 +22,20 @@
         - 秘密鍵
     - 固定IP で DNS で名前割り当てたので作り直し
         - `mkcert localhost 127.0.0.1 ::1 192.168.11.39 arch-portable.local`
+        - ~/localhost+4.p12
+            - 指定が増えたのでその分 + の数字も増えている
 
 1. ローカル証明書の作成
     - `mkcert -pkcs12 localhost 127.0.0.1 ::1` を実行
     - ~/localhost+2.p12
         - 固定IP で DNS で名前割り当てたので作り直し
         - `mkcert -pkcs12 localhost 127.0.0.1 ::1 192.168.11.39 arch-portable.local` を実行
-        - ~/localhost+3.p12
+        - ~/localhost+4.p12
         - 他の端末(スマホなど)からサーバーに接続する時用にサーバーの IP も加えておく
         - 必要そうなら DNS ( もしくは mDNS )の設定を行う
 
 1. src/main/resources に証明書を配置する
-    - cp ~/localhost+2.p12 .
+    - cp ~/localhost+4.p12 .
 
 1. application.yml に下記を追記
     - 8443 ポートは重要

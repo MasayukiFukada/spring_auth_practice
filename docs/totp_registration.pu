@@ -1,0 +1,43 @@
+@startuml
+title TOTPの登録
+
+actor アクター
+participant ブラウザ
+participant サーバー
+database DB
+
+アクター -> ブラウザ: TOTP設定ページにアクセス
+ブラウザ -> サーバー: GET /totp/setup
+activate サーバー
+サーバー -> サーバー: 新しいTOTPシークレットを生成
+サーバー -> DB: ユーザーにシークレットを保存 (saveTotpSecret)
+activate DB
+DB --> サーバー: 保存完了
+deactivate DB
+サーバー --> ブラウザ: TOTPシークレット (QRコードとして), 登録フォーム
+deactivate サーバー
+
+アクター -> ブラウザ: QRコードをスキャンし、TOTPアプリに登録
+アクター -> ブラウザ: TOTPアプリから生成されたコードを入力し、確認ボタンをクリック
+ブラウザ -> サーバー: POST /totp/verify (TOTPコード)
+activate サーバー
+サーバー -> DB: ユーザーのTOTPシークレットを取得 (findTotpSecretByUserId)
+activate DB
+DB --> サーバー: TOTPシークレット
+deactivate DB
+サーバー -> サーバー: TOTPコードを検証 (TOTPVerifier.verify)
+alt 検証成功
+    サーバー -> DB: TOTP有効化フラグを更新 (updateTotpEnabled)
+    activate DB
+    DB --> サーバー: 更新完了
+    deactivate DB
+    サーバー --> ブラウザ: 登録成功レスポンス
+    deactivate サーバー
+    ブラウザ -> アクター: TOTP登録完了メッセージ表示
+else 検証失敗
+    サーバー --> ブラウザ: エラーレスポンス
+    deactivate サーバー
+    ブラウザ -> アクター: エラーメッセージ表示
+end
+
+@enduml
