@@ -1,7 +1,7 @@
 ## mkcert によるローカル証明書
 
 - 今回行なった手順
-    - 検証端末( arch-portable.local @ 192.168.11.39 )
+    - 検証端末( arch-portable.home.arpa @ 192.168.11.39 )
 
 1. 検証端末のホームディレクトリに移動
 
@@ -21,7 +21,7 @@
     - ~/localhost+2-key.pem
         - 秘密鍵
     - 固定IP で DNS で名前割り当てたので作り直し
-        - `mkcert localhost 127.0.0.1 ::1 192.168.11.39 arch-portable.local`
+        - `mkcert localhost 127.0.0.1 ::1 192.168.11.39 arch-portable.home.arpa`
         - ~/localhost+4.p12
             - 指定が増えたのでその分 + の数字も増えている
 
@@ -29,7 +29,7 @@
     - `mkcert -pkcs12 localhost 127.0.0.1 ::1` を実行
     - ~/localhost+2.p12
         - 固定IP で DNS で名前割り当てたので作り直し
-        - `mkcert -pkcs12 localhost 127.0.0.1 ::1 192.168.11.39 arch-portable.local` を実行
+        - `mkcert -pkcs12 localhost 127.0.0.1 ::1 192.168.11.39 arch-portable.home.arpa` を実行
         - ~/localhost+4.p12
         - 他の端末(スマホなど)からサーバーに接続する時用にサーバーの IP も加えておく
         - 必要そうなら DNS ( もしくは mDNS )の設定を行う
@@ -56,12 +56,12 @@ server:
 1. サーバーを起動すれば `https://localhost:8443` でアクセスができる
     - ブラウザのアドレス欄から https であることが確認できる
 
-# 他端末からアクセスするために証明書を使用する
+# 他端末(例ではAndroid)からアクセスするために証明書を使用する
 
 1. ~/.local/share/mkcert/rootCA.pem
     - mkcert におけるルート CA 証明書はこちらにある
 
-1. Android に pem ファイルを送信する
+1. Android に上記のルート CA 証明書の pem ファイルを送信する
     - LocalSend や Pairdrop などで転送
 
 1. Android の標準の「設定」から"証明書"で探すと CA 証明書をインストールする画面が見つかるのでファイルを使用してインストールする
